@@ -1,5 +1,13 @@
 {
   "appId": "com.papaproject.app",
   "appName": "jk site",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
 }
