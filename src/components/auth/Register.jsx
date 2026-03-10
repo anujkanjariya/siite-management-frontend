@@ -17,7 +17,13 @@ const Register = ({ onLoginClick }) => {
         try {
             await register({ name, number, password });
         } catch (err) {
-            const msg = err.response?.data?.message || err.response?.data?.error || 'Registration failed. Try again.';
+            console.error('Registration error:', err);
+            let msg = 'Registration failed. Try again.';
+            if (!err.response) {
+                msg = 'Network Error: Cannot reach server. Please check your internet or retry.';
+            } else if (err.response.data?.message || err.response.data?.error) {
+                msg = err.response.data.message || err.response.data.error;
+            }
             setError(msg);
         } finally {
             setIsLoading(false);

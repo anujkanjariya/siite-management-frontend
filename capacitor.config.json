@@ -3,7 +3,10 @@
   "appName": "jk site",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "allowNavigation": [
+      "site-management-zggf.onrender.com"
+    ]
   },
   "plugins": {
     "CapacitorHttp": {

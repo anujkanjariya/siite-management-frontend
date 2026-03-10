@@ -16,7 +16,13 @@ const Login = ({ onRegisterClick }) => {
         try {
             await login(number, password);
         } catch (err) {
-            const msg = err.response?.data?.message || err.response?.data?.error || 'Invalid number or password';
+            console.error('Login error:', err);
+            let msg = 'Invalid number or password';
+            if (!err.response) {
+                msg = 'Network Error: Cannot reach server. Please check your internet or retry.';
+            } else if (err.response.data?.message || err.response.data?.error) {
+                msg = err.response.data.message || err.response.data.error;
+            }
             setError(msg);
         } finally {
             setIsLoading(false);
