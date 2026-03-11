@@ -4,6 +4,9 @@ import WorkerSection from '../workers/WorkerSection';
 import * as api from '../../api/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 const BillingTable = ({
     siteId,
@@ -116,7 +119,7 @@ const BillingTable = ({
         return sum + (l * w * r);
     }, 0).toFixed(2);
 
-    const downloadPDF = () => {
+    const downloadPDF = async () => {
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -207,7 +210,33 @@ const BillingTable = ({
         doc.setTextColor(148, 163, 184); // Slate-400
         doc.text('Thank you for your business!', pageWidth / 2, finalY + 20, { align: 'center' });
 
-        doc.save(`${siteName || 'Billing'}_Invoice.pdf`);
+        const fileName = `${siteName || 'Billing'}_Invoice.pdf`;
+
+        if (Capacitor.isNativePlatform()) {
+            try {
+                // Generate PDF as base64
+                const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+                // Save file to cache directory so it can be shared
+                const savedFile = await Filesystem.writeFile({
+                    path: fileName,
+                    data: pdfBase64,
+                    directory: Directory.Cache
+                });
+
+                // Open the native share dialog
+                await Share.share({
+                    title: 'Share PDF',
+                    text: `Invoice for ${siteName || 'Project'}`,
+                    url: savedFile.uri,
+                });
+            } catch (error) {
+                console.error('Error sharing PDF:', error);
+                alert('Could not share PDF. Please try again.');
+            }
+        } else {
+            doc.save(fileName);
+        }
     };
 
 
