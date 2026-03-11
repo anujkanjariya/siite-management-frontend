@@ -150,7 +150,25 @@ const BillingTable = ({
 
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Site Name: ${siteName || 'N/A'}`, 20, 62);
+
+        // --- Unicode Support for Site Name (Rendering via Canvas) ---
+        const siteNameText = `Site Name: ${currentSiteName || 'N/A'}`;
+
+        // Create a temporary canvas to render the text
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.font = '16px Arial'; // Using a common system font that supports Gujarati
+        const textWidth = ctx.measureText(siteNameText).width;
+        canvas.width = textWidth * 2; // Extra room for high-res
+        canvas.height = 40;
+
+        ctx.fillStyle = '#1e293b'; // Slate-800
+        ctx.font = '24px Arial';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(siteNameText, 0, 20);
+
+        const textImgData = canvas.toDataURL('image/png');
+        doc.addImage(textImgData, 'PNG', 20, 56, (textWidth * 24) / 40, 10); // scale appropriately
 
         // --- Table Section ---
         const tableData = items.map((item, index) => [
@@ -210,7 +228,7 @@ const BillingTable = ({
         doc.setTextColor(148, 163, 184); // Slate-400
         doc.text('Thank you for your business!', pageWidth / 2, finalY + 20, { align: 'center' });
 
-        const fileName = `${siteName || 'Billing'}_Invoice.pdf`;
+        const fileName = `${currentSiteName || 'Billing'}_Invoice.pdf`;
 
         if (Capacitor.isNativePlatform()) {
             try {
