@@ -58,4 +58,10 @@ export const recordPayment = (siteId, workerId, paymentData) => api.post(`/sites
 export const updatePayment = (siteId, workerId, paymentId, paymentData) => api.put(`/sites/${siteId}/workers/${workerId}/payments/${paymentId}`, paymentData);
 export const deletePayment = (siteId, workerId, paymentId) => api.delete(`/sites/${siteId}/workers/${workerId}/payments/${paymentId}`);
 
+// Site Withdrawal endpoints
+export const getWithdrawals = (siteId) => api.get(`/sites/${siteId}/withdrawals`);
+export const addWithdrawal = (siteId, data) => api.post(`/sites/${siteId}/withdrawals`, data);
+export const updateWithdrawal = (siteId, withdrawalId, data) => api.put(`/sites/${siteId}/withdrawals/${withdrawalId}`, data);
+export const deleteWithdrawal = (siteId, withdrawalId) => api.delete(`/sites/${siteId}/withdrawals/${withdrawalId}`);
+
 export default api;

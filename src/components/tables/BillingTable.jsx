@@ -7,6 +7,7 @@ import autoTable from 'jspdf-autotable';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import WithdrawalSection from './WithdrawalSection';
 
 const BillingTable = ({
     siteId,
@@ -17,6 +18,7 @@ const BillingTable = ({
 }) => {
     const [items, setItems] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [totalWithdrawals, setTotalWithdrawals] = useState(0);
 
     const fetchItems = async () => {
         setIsLoading(true);
@@ -123,16 +125,41 @@ const BillingTable = ({
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
 
+        // Helper to render Unicode text (Gujarati) to image for PDF compatibility
+        const renderUnicodeToImage = (text, fontSize = 24, fontStyle = 'bold', color = '#ffffff') => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            // Use 2x scale for better resolution in PDF
+            const scale = 2;
+            ctx.font = `${fontStyle} ${fontSize * scale}px Arial, sans-serif`;
+            const metrics = ctx.measureText(text);
+            
+            canvas.width = metrics.width + 20;
+            canvas.height = fontSize * scale * 1.5;
+            
+            ctx.font = `${fontStyle} ${fontSize * scale}px Arial, sans-serif`;
+            ctx.fillStyle = color;
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 10 / scale, canvas.height / 2);
+            
+            return {
+                data: canvas.toDataURL('image/png'),
+                width: (metrics.width + 20) / scale,
+                height: (fontSize * scale * 1.5) / scale
+            };
+        };
+
         // --- Header Section ---
         doc.setFillColor(37, 99, 235); // Blue primary color
         doc.rect(0, 0, pageWidth, 40, 'F');
 
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(24);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Tiles Fiting', 20, 25);
+        // App Title (Unicode)
+        const appTitle = "Contruction Bill's";
+        const titleImg = renderUnicodeToImage(appTitle, 20, 'bold', '#ffffff');
+        doc.addImage(titleImg.data, 'PNG', 20, 12, titleImg.width * 0.5, titleImg.height * 0.5);
 
-        doc.setFontSize(10);
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
         doc.text('Premium Installation Services', 20, 32);
 
@@ -144,31 +171,14 @@ const BillingTable = ({
 
         // --- Dynamic Info ---
         doc.setTextColor(30, 41, 59); // Slate-800
-        doc.setFontSize(14);
+        doc.setFontSize(13);
         doc.setFont('helvetica', 'bold');
-        doc.text('Invoice Details', 20, 55);
+        doc.text('Invoice Details', 20, 52);
 
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-
-        // --- Unicode Support for Site Name (Rendering via Canvas) ---
-        const siteNameText = `Site Name: ${currentSiteName || 'N/A'}`;
-
-        // Create a temporary canvas to render the text
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.font = '16px Arial'; // Using a common system font that supports Gujarati
-        const textWidth = ctx.measureText(siteNameText).width;
-        canvas.width = textWidth * 2; // Extra room for high-res
-        canvas.height = 40;
-
-        ctx.fillStyle = '#1e293b'; // Slate-800
-        ctx.font = '24px Arial';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(siteNameText, 0, 20);
-
-        const textImgData = canvas.toDataURL('image/png');
-        doc.addImage(textImgData, 'PNG', 20, 56, (textWidth * 24) / 40, 10); // scale appropriately
+        // Site Name (Unicode Support)
+        const siteText = `Site: ${currentSiteName || 'N/A'}`;
+        const siteImg = renderUnicodeToImage(siteText, 12, 'bold', '#1e293b');
+        doc.addImage(siteImg.data, 'PNG', 20, 56, siteImg.width * 0.5, siteImg.height * 0.5);
 
         // --- Table Section ---
         const tableData = items.map((item, index) => [
@@ -177,13 +187,13 @@ const BillingTable = ({
             item.length || '0',
             item.width || '0',
             calculateTotalFoot(item.length, item.width),
-            `Rs. ${item.rate || '0'}`,
-            `Rs. ${calculateTotalAmount(item.length, item.width, item.rate)}`
+            `${item.rate || '0'}`,
+            `${calculateTotalAmount(item.length, item.width, item.rate)}`
         ]);
 
         autoTable(doc, {
             startY: 70,
-            head: [['#', 'Item', 'L', 'W', 'Total Foot', 'Rate', 'Total Amount']],
+            head: [['#', 'Item Descripton', 'L', 'W', 'Total Foot', 'Rate', 'Total']],
             body: tableData,
             theme: 'grid',
             headStyles: {
@@ -194,6 +204,7 @@ const BillingTable = ({
             },
             columnStyles: {
                 0: { halign: 'center', cellWidth: 10 },
+                1: { cellWidth: 60 }, // Item Description
                 2: { halign: 'center', cellWidth: 15 },
                 3: { halign: 'center', cellWidth: 15 },
                 4: { halign: 'center', cellWidth: 25 },
@@ -202,31 +213,80 @@ const BillingTable = ({
             },
             styles: {
                 fontSize: 9,
-                cellPadding: 4
+                cellPadding: 4,
+                valign: 'middle'
+            },
+            didParseCell: (data) => {
+                if (data.column.index === 1 && data.section === 'body') {
+                    // Capture original text and clear it from the cell to prevent garbled rendering
+                    data.cell.customData = data.cell.text[0];
+                    data.cell.text = [''];
+                }
+            },
+            didDrawCell: (data) => {
+                if (data.column.index === 1 && data.section === 'body') {
+                    const text = data.cell.customData;
+                    if (text && text !== '-') {
+                        const img = renderUnicodeToImage(text, 12, 'normal', '#1e293b');
+                        const imgWidth = img.width * 0.45;
+                        const imgHeight = img.height * 0.45;
+                        doc.addImage(
+                            img.data, 
+                            'PNG', 
+                            data.cell.x + 2, 
+                            data.cell.y + (data.cell.height / 2) - (imgHeight / 2), 
+                            Math.min(imgWidth, 55), 
+                            imgHeight
+                        );
+                    }
+                }
             }
         });
 
-        // --- Total Section ---
+        // --- Detailed Total Section ---
         const finalY = doc.lastAutoTable.finalY + 15;
-        doc.setFillColor(248, 250, 252); // Slate-50
-        doc.rect(pageWidth - 100, finalY - 8, 80, 12, 'F');
+        const totalBoxWidth = 80;
+        const totalBoxX = pageWidth - totalBoxWidth - 20;
 
-        doc.setFontSize(11);
+        doc.setFillColor(248, 250, 252); // Slate-50
+        doc.setDrawColor(226, 232, 240); // Slate-200
+        doc.roundedRect(totalBoxX, finalY - 5, totalBoxWidth, 35, 3, 3, 'FD');
+
+        doc.setFontSize(9);
         doc.setTextColor(100, 116, 139); // Slate-500
         doc.setFont('helvetica', 'bold');
-        doc.text('Grand Total:', pageWidth - 95, finalY);
 
-        doc.setFontSize(14);
+        const formatCurr = (val) => Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+
+        // Billing Total
+        doc.text('Billing Total:', totalBoxX + 5, finalY + 5);
+        doc.setTextColor(30, 41, 59);
+        doc.text(`Rs. ${formatCurr(grandTotal)}`, pageWidth - 25, finalY + 5, { align: 'right' });
+
+        // Withdrawal Total
+        doc.setTextColor(100, 116, 139);
+        doc.text('Withdrawal Total:', totalBoxX + 5, finalY + 15);
+        doc.setTextColor(239, 68, 68); // Red-500
+        doc.text(`Rs. ${formatCurr(totalWithdrawals)}`, pageWidth - 25, finalY + 15, { align: 'right' });
+
+        // Divider
+        doc.setDrawColor(203, 213, 225);
+        doc.line(totalBoxX + 5, finalY + 19, pageWidth - 25, finalY + 19);
+
+        // Gross Total
+        doc.setFontSize(10);
         doc.setTextColor(37, 99, 235); // Blue-600
-        doc.text(`Rs. ${grandTotal}`, pageWidth - 25, finalY, { align: 'right' });
+        doc.text('Gross Total:', totalBoxX + 5, finalY + 27);
+        doc.setFontSize(11);
+        doc.text(`Rs. ${formatCurr(parseFloat(grandTotal) - totalWithdrawals)}`, pageWidth - 25, finalY + 27, { align: 'right' });
 
         // Footer Line
         doc.setDrawColor(226, 232, 240); // Slate-200
-        doc.line(20, finalY + 10, pageWidth - 20, finalY + 10);
+        doc.line(20, finalY + 45, pageWidth - 20, finalY + 45);
 
-        doc.setFontSize(9);
+        doc.setFontSize(8);
         doc.setTextColor(148, 163, 184); // Slate-400
-        doc.text('Thank you for your business!', pageWidth / 2, finalY + 20, { align: 'center' });
+        doc.text('Thank you for your business!', pageWidth / 2, finalY + 52, { align: 'center' });
 
         const fileName = `${currentSiteName || 'Billing'}_Invoice.pdf`;
 
@@ -459,16 +519,26 @@ const BillingTable = ({
             )}
 
             {/* Total Footer */}
-            <div className="mt-3 flex justify-end">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-2 rounded-lg sm:rounded-3xl flex items-center gap-4 sm:gap-8 shadow-2xl shadow-blue-200 border border-blue-500">
-                    <div className="flex flex-col items-end">
-                        <span className="text-[9px] sm:text-xs font-bold text-blue-100 uppercase tracking-widest">Total</span>
+            <div className="mt-4 flex justify-end">
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm min-w-[240px] divide-y divide-slate-100 animate-in fade-in slide-in-from-right-4 duration-500">
+                    <div className="flex justify-between items-center py-1.5">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Billing Total</span>
+                        <span className="text-sm font-bold text-slate-700 font-mono">₹{Number(grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
-                    <span className="text-xl sm:text-4xl font-black tracking-tighter">
-                        ₹{grandTotal}
-                    </span>
+                    <div className="flex justify-between items-center py-1.5">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Withdrawal Total</span>
+                        <span className="text-sm font-bold text-red-500 font-mono">₹{Number(totalWithdrawals).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 mt-1">
+                        <span className="text-xs font-black text-blue-600 uppercase tracking-widest">Gross Total</span>
+                        <span className="text-xl font-black text-slate-900 font-mono tracking-tighter">
+                            ₹{(parseFloat(grandTotal) - totalWithdrawals).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                    </div>
                 </div>
             </div>
+
+            <WithdrawalSection siteId={siteId} onWithdrawalsChange={(total) => setTotalWithdrawals(total)} />
 
             {/* Workers Section */}
             <WorkerSection siteId={siteId} />

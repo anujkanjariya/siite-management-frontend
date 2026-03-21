@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Plus, Check, X, Trash2, Edit2, IndianRupee, Loader2, AlertCircle } from 'lucide-react';
 import * as api from '../../api/api';
 
-const WorkerSection = ({ siteId }) => {
+const WorkerSection = ({ siteId, onTotalPaymentsChange }) => {
     const [workers, setWorkers] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
@@ -44,6 +44,17 @@ const WorkerSection = ({ siteId }) => {
             fetchWorkers();
         }
     }, [siteId]);
+
+    // Report total payments to parent
+    useEffect(() => {
+        if (onTotalPaymentsChange) {
+            const total = workers.reduce((acc, worker) => {
+                const workerTotal = (worker.payments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+                return acc + workerTotal;
+            }, 0);
+            onTotalPaymentsChange(total);
+        }
+    }, [workers, onTotalPaymentsChange]);
 
     const addWorker = async (e) => {
         e.preventDefault();

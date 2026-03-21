@@ -103,7 +103,7 @@ const Dashboard = () => {
               <Calculator size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-800">BillingMaster</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-800">Contruction Bill's</h1>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">
                 Signed in as {user?.name}
               </p>
