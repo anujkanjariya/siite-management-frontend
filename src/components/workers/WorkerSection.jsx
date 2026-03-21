@@ -160,7 +160,7 @@ const WorkerSection = ({ siteId, onTotalPaymentsChange }) => {
     }
 
     return (
-        <div className="mt-4 bg-white overflow-hidden">
+        <div className="mt-4 overflow-hidden">
             <div className="flex justify-between items-center mb-4 py-2 border-b border-slate-100">
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <Users size={20} className="text-blue-600" />

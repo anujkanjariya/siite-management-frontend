@@ -204,9 +204,9 @@ const BillingTable = ({
             },
             columnStyles: {
                 0: { halign: 'center', cellWidth: 10 },
-                1: { cellWidth: 60 }, // Item Description
-                2: { halign: 'center', cellWidth: 15 },
-                3: { halign: 'center', cellWidth: 15 },
+                1: { cellWidth: 50 }, // Item Description (reduced from 60 to 50)
+                2: { halign: 'center', cellWidth: 20 }, // Increased from 15 to 20
+                3: { halign: 'center', cellWidth: 20 }, // Increased from 15 to 20
                 4: { halign: 'center', cellWidth: 25 },
                 5: { halign: 'center', cellWidth: 25 },
                 6: { halign: 'right', cellWidth: 35 }
@@ -342,7 +342,7 @@ const BillingTable = ({
     };
 
     return (
-        <div className=" bg-white max-w-6xl mx-auto pb-20">
+        <div className=" max-w-6xl mx-auto pb-20">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
                 <div className="flex items-center gap-4">
                     <button
